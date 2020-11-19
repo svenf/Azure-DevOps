@@ -1,0 +1,23 @@
+# Pipeline to validate the UAT branch against the UAT environment
+
+trigger: none
+jobs:
+- job: UATValidate
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/uat'))
+  steps:
+    - task: UseNode@1
+    - bash: 
+        npm install sfdx-cli@7.75.0 --global
+      displayName: Install Salesforce CLI
+    - bash: 
+        echo $(UATAuthUrl) > ./UAT_SFDX_URL.txt
+      displayName: Populate auth file with UAT_SFDX_URL secret
+    - bash: 
+        sfdx force:auth:sfdxurl:store -f ./UAT_SFDX_URL.txt -a uat -s
+      displayName: Authorize salesforce org
+    - bash: 
+        sfdx force:source:convert -d ./src
+      displayName: Convert to deploy source
+    - bash: 
+        sfdx force:mdapi:deploy -l RunLocalTests -c -d ./src -u uat -w 10
+      displayName: Run validation on source code to UAT

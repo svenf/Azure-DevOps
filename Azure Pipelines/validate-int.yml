@@ -1,0 +1,23 @@
+# Pipeline to validate the INT branch against the INT environment
+
+trigger: none
+jobs:
+- job: INTValidate
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/int'))
+  steps:
+    - task: UseNode@1
+    - bash: 
+        npm install sfdx-cli@7.75.0 --global
+      displayName: Install Salesforce CLI
+    - bash: 
+        echo $(INTAuthUrl) > ./INT_SFDX_URL.txt
+      displayName: Populate auth file with INT_SFDX_URL secret
+    - bash: 
+        sfdx force:auth:sfdxurl:store -f ./INT_SFDX_URL.txt -a int -s
+      displayName: Authorize salesforce org
+    - bash: 
+        sfdx force:source:convert -d ./src
+      displayName: Convert to deploy source
+    - bash: 
+        sfdx force:mdapi:deploy -l RunLocalTests -c -d ./src -u int -w 10
+      displayName: Run validation on source code to INT

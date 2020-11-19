@@ -1,0 +1,23 @@
+# Pipeline to deploy the master branch against the Production environment
+
+trigger: none
+jobs:
+- job: PRODDeploy
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/master'))
+  steps:
+    - task: UseNode@1
+    - bash: 
+        npm install sfdx-cli@7.75.0 --global
+      displayName: Install Salesforce CLI
+    - bash: 
+        echo $(ProdAuthUrl) > ./PROD_SFDX_URL.txt
+      displayName: Populate auth file with PROD_SFDX_URL secret
+    - bash: 
+        sfdx force:auth:sfdxurl:store -f ./PROD_SFDX_URL.txt -a prod -s
+      displayName: Authorize salesforce org
+    - bash: 
+        sfdx force:source:convert -d ./src
+      displayName: Convert to deploy source
+    - bash: 
+        sfdx force:mdapi:deploy -d ./src -u prod -w 10
+      displayName: Deploy source code to PROD

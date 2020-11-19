@@ -1,0 +1,23 @@
+# Pipeline to validate the master branch against the production environment
+
+trigger: none
+jobs:
+- job: PRODValidate
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/master'))
+  steps:
+    - task: UseNode@1
+    - bash: 
+        npm install sfdx-cli@7.75.0 --global
+      displayName: Install Salesforce CLI
+    - bash: 
+        echo $(ProdAuthUrl) > ./PROD_SFDX_URL.txt
+      displayName: Populate auth file with PROD_SFDX_URL secret
+    - bash: 
+        sfdx force:auth:sfdxurl:store -f ./PROD_SFDX_URL.txt -a prod -s
+      displayName: Authorize salesforce org
+    - bash: 
+        sfdx force:source:convert -d ./src
+      displayName: Convert to deploy source
+    - bash: 
+        sfdx force:mdapi:deploy -l RunLocalTests -c -d ./src -u prod -w 10
+      displayName: Run validation on source code to PROD
